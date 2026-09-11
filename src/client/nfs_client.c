@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
 #include <arpa/inet.h>
 
 #define PORT "3490"
+#define DEFAULT_BUFFER_SIZE 270
 
 int main(int argc, char *argv[])
 {
@@ -105,10 +106,11 @@ int main(int argc, char *argv[])
 
     freeaddrinfo(res);
 
-    char *cmd = "hello";
+    char *cmd = malloc(sizeof(char) * DEFAULT_BUFFER_SIZE);
     char buffer[100];
     
     while (1) {
+        fgets(cmd, DEFAULT_BUFFER_SIZE, stdin);
         if (send(sock_fd, cmd, strlen(cmd), 0) == -1) {
             perror("send");
             break;
