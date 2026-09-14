@@ -1,1 +1,0 @@
-void tokenize_cmd(char* cmd, char *cmd_tok[]);
