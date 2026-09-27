@@ -1,0 +1,5 @@
+if [ $# != 2 ] ; then
+echo "Usage: mountit <mntpt> <target>"
+exit 1
+fi
+testfs -omodules=subdir,subdir=$PWD/$2 -d -s -f $1
