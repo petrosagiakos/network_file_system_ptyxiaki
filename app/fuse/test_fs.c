@@ -1,26 +1,34 @@
 #define FUSE_USE_VERSION 26 // Αλλαγή έκδοσης για FUSE 2 compatibility
 
 #include <fuse.h>
+
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stddef.h>
 #include <assert.h>
-#include <unistd.h>    // Για pread και close
-#include <sys/types.h> // Για lstat και καταλόγους
-#include <sys/stat.h>  // Για struct stat
-#include <dirent.h>    // Για DIR, opendir, readdir, struct dirent
+#include <unistd.h>
 
-// Δήλωση της καθολικής μεταβλητής για το log file
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#include <dirent.h>
+
+#include "protocol_text.h"
+
+
 FILE *logfile = NULL;
 
-static int
-sp_open(const char *path, struct fuse_file_info *fi)
+static int sock_fd = -1;
+
+
+static int sp_open(const char *path, struct fuse_file_info *fi)
 {
     int fd;
     fprintf(logfile, "sp_open for %s\n", path);
-    fd = open(path, fi->flags);
+    fd = server_open(sock_fd,path, fi->flags);
     if (fd == -1) {
         return -errno;
     }
@@ -29,15 +37,14 @@ sp_open(const char *path, struct fuse_file_info *fi)
     return 0;
 }
 
-static int
-sp_read(const char *path, char *buf, size_t size, off_t offset,
+static int sp_read(const char *path, char *buf, size_t size, off_t offset,
         struct fuse_file_info *fi)
 {
     size_t sz;
     int fd;
     if (fi == NULL) {
         fprintf(logfile, "sp_read for %s (open first)\n", path);
-        fd = open(path, O_RDONLY);
+        fd = server_open(sock_fd,path, O_RDONLY);
     }
     else {
         fd = fi->fh;
@@ -46,7 +53,7 @@ sp_read(const char *path, char *buf, size_t size, off_t offset,
     if (fd == -1) {
         return -errno;
     }
-    sz = pread(fd, buf, size, offset);
+    sz = server_read(sock_fd,fd, buf, size, offset);
     if (sz == -1) {
         return -errno;
     }
@@ -56,8 +63,7 @@ sp_read(const char *path, char *buf, size_t size, off_t offset,
     return sz;
 }
 
-static int
-sp_getattr(const char *path, struct stat *stbuf)
+static int sp_getattr(const char *path, struct stat *stbuf)
 {
     int error;
     fprintf(logfile, "sp_getattr for %s\n", path);
@@ -68,8 +74,7 @@ sp_getattr(const char *path, struct stat *stbuf)
     return error;
 }
 
-static int
-sp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+static int sp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
            off_t offset, struct fuse_file_info *fi)
 {
     DIR *dp;
@@ -104,15 +109,64 @@ static struct fuse_operations spfs_operations = {
     .readdir = sp_readdir,
 };
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
-    logfile = fopen("spfs.log", "w+");
-    if (logfile == NULL) {
-        printf("spfs: failed to open logfile\n");
-        return -1;
-    } else {
-        setbuf(logfile, NULL);
-        return fuse_main(argc, argv, &spfs_operations, NULL);
+    if (argc != 3) {
+        fprintf(stderr,
+                "Usage: %s <mountpoint> <server_ip>\n",
+                argv[0]);
+
+        return EXIT_FAILURE;
     }
+    logfile = fopen("spfs.log", "w+");
+    
+    if (logfile == NULL) {
+        perror("spfs.log");
+        return EXIT_FAILURE;
+    }
+
+    setbuf(logfile, NULL);
+
+    fprintf(logfile,
+            "Connecting to server %s:%s\n",
+            argv[2],
+            PORT);
+
+    sock_fd = init_client(argv[2]);
+
+
+    if (sock_fd < 0) {
+        fprintf(stderr,
+                "Failed to connect to server %s:%s\n",
+                argv[2],
+                PORT);
+
+        fclose(logfile);
+
+        return EXIT_FAILURE;
+    }
+
+    fprintf(logfile,
+            "Connected. socket fd=%d\n",
+            sock_fd);
+    
+    char *fuse_argv[2];
+
+    fuse_argv[0] = argv[0];
+    fuse_argv[1] = argv[1];
+
+    int fuse_argc = 2;
+
+    int result =
+        fuse_main(fuse_argc,
+                  fuse_argv,
+                  &spfs_operations,
+                  NULL);
+    close_sock(sock_fd);
+    sock_fd = -1;
+
+    fclose(logfile);
+
+    return result;
+    
 }
