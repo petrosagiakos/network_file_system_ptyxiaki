@@ -15,33 +15,36 @@
 #include "cmd_parser.h"
 
 #define PORT "3490" 
+#define MAX_CONNECTIONS 10
+#define DEFAULT_BUFFER_SIZE 1024
 
-#define DEFAULT_BUFFER 256
-
-
-
-int main(){
-    int sock_fd, new_fd;
+int server_init()
+{
+    int sock_fd;
     struct addrinfo hints, *res;
-    struct sockaddr_storage their_addr;
+   
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;  
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-    getaddrinfo(NULL, "3490", &hints, &res);
+    getaddrinfo(NULL, PORT, &hints, &res);
 
     sock_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 
     bind(sock_fd, res->ai_addr, res->ai_addrlen);
     freeaddrinfo(res);
-    if (listen(sock_fd, 10) == -1) {
-        perror("listen");
-        exit(1);
+    if (listen(sock_fd, MAX_CONNECTIONS) == -1) {
+        return -1;
     }
-    char buffer[DEFAULT_BUFFER];//to change
-    socklen_t addr_size;
-    char *text="test";
+    return sock_fd;
+}
+
+void server_loop(int sock_fd){
+    int new_fd;
+    struct sockaddr_storage their_addr;
+    char buffer[DEFAULT_BUFFER_SIZE];
+
     while(1){
         addr_size = sizeof their_addr;
         new_fd = accept(sock_fd, (struct sockaddr *)&their_addr, &addr_size);
@@ -66,6 +69,11 @@ int main(){
         close(new_fd);
         
     }
-    return 0;
+    
+}
+
+int main(){
+    int sock_fd=server_init();
+    server_loop(sock_fd);
 }
 //gcc nfs_server.c -o nfs_server

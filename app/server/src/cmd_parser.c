@@ -27,6 +27,65 @@ int tokenize_cmd(char* cmd, char *cmd_tok[], int n){
     }
     return i;
 }
+
+void * parser(char * input){
+    char *cmd_tok[MAX_CMD_TOKENS];
+
+    enum op_type type = get_command(cmd_tok[0]);
+
+    switch (type) {
+
+        case READ:
+
+            if (cmd.filename == NULL) {
+                return -1;
+            }
+            // maybe the best choice would be to create a struct in each case and parse that struct into suitable function that handles all this
+            struct READ_CMD read;
+            read.fd = atoi(cmd_tok[1]);
+            read.offset = atoi(cmd_tok[2]);
+            read.bytes = atoi(cmd_tok[3]);
+
+            char *buffer;
+            op = readf(
+                read.fd,
+                read.offset,
+                read.bytes,
+                buffer
+            );
+
+            break;
+
+
+        case CMD_CREATE:
+
+            if (cmd.filename == NULL) {
+                return -1;
+            }
+
+            op = createf(cmd.filename);
+
+            break;
+
+
+        case CMD_DELETE:
+
+            if (cmd.filename == NULL) {
+                return -1;
+            }
+
+            op = deletef(cmd.filename);
+
+            break;
+
+
+        default:
+
+            op = -1;
+            break;
+    }
+}
+
 struct command parse_cmd(char *input)
 {
     char *cmd_tok[MAX_CMD_TOKENS];
@@ -88,15 +147,18 @@ struct command parse_cmd(char *input)
 enum command_type get_command(const char *str)
 {
     if (strcmp(str, "READ") == 0)
-        return CMD_READ;
+        return READ;
 
     if (strcmp(str, "CREATE") == 0)
-        return CMD_CREATE;
+        return CREATE;
 
     if (strcmp(str, "DELETE") == 0)
-        return CMD_DELETE;
-
-    return CMD_UNKNOWN;
+        return DELETE;
+    if (strcmp(str, "OPEN") == 0)
+        return OPEN;
+    if (strcmp(str, "WRITE") == 0)
+        return WRITE;
+    return UNKNOWN;
 }
 
 int execute_file_functions(char *input)
