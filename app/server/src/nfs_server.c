@@ -46,7 +46,7 @@ void server_loop(int sock_fd){
     char buffer[DEFAULT_BUFFER_SIZE];
 
     while(1){
-        addr_size = sizeof their_addr;
+        socklen_t addr_size = sizeof(their_addr);
         new_fd = accept(sock_fd, (struct sockaddr *)&their_addr, &addr_size);
         
         printf("connection accepted: %i",new_fd);
@@ -59,12 +59,12 @@ void server_loop(int sock_fd){
             }
           
          
-            int result=execute_file_functions(buffer);
-            printf("result: %d\n",result);
+            parser(new_fd, buffer);
+            /*printf("result: %d\n",result);
             if(result<0){
                 printf("unknown command");
-            }
-            send(new_fd,text,strlen(text),0);
+            }*/
+            //send(new_fd,text,strlen(text),0);
         }
         close(new_fd);
         

@@ -65,13 +65,12 @@ static int sp_read(const char *path, char *buf, size_t size, off_t offset,
 
 static int sp_getattr(const char *path, struct stat *stbuf)
 {
-    int error;
-    fprintf(logfile, "sp_getattr for %s\n", path);
-    error = lstat(path, stbuf);
-    if (error == -1) {
-        error = -errno;
+    memset(stbuf, 0, sizeof(struct stat));
+
+    if (server_getattr(sock_fd, path, stbuf) < 0) {
+        return -errno;
     }
-    return error;
+    return 0;
 }
 
 static int sp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
@@ -153,9 +152,10 @@ int main(int argc, char *argv[])
     char *fuse_argv[2];
 
     fuse_argv[0] = argv[0];
-    fuse_argv[1] = argv[1];
+    fuse_argv[1] = "-d";
+    fuse_argv[2] = argv[1];
 
-    int fuse_argc = 2;
+    int fuse_argc = 3;
 
     int result =
         fuse_main(fuse_argc,

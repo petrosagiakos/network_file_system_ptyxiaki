@@ -70,6 +70,42 @@ ssize_t server_read(int sock_fd,int fd, char * buf, size_t size, off_t offset ){
         return bytes_received;
 }
 
+int server_getattr(int sock_fd, const char *path, struct stat *stbuf){
+
+    char buffer[DEFAULT_BUFFER_SIZE];
+    int n=snprintf(buffer,sizeof(buffer),"GETATTR %s",path);
+
+    if (send_all(sock_fd, buffer, n) < 0) {
+        return -1;
+    }
+    int error;
+
+    ssize_t received = recv(sock_fd,
+                            &error,
+                            sizeof(error),
+                            MSG_WAITALL);
+
+    if (received != sizeof(error)) {
+        return -1;
+    }
+
+    if (error != 0) {
+        errno = error;
+        return -1;
+    }
+
+    received = recv(sock_fd,
+                    stbuf,
+                    sizeof(struct stat),
+                    MSG_WAITALL);
+
+    if (received != sizeof(struct stat)) {
+        return -1;
+    }
+
+    return 0;
+}
+
 int init_client(char *address){
 
     int sock_fd; //file descriptor

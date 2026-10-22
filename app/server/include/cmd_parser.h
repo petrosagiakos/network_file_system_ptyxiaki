@@ -1,14 +1,16 @@
 #ifndef CMD_PARSER_H
 #define CMD_PARSER_H
 
-#define MAX_CMD_TOKENS 4
-enum command_type{
+#define MAX_CMD_TOKENS 5
+enum op_type{
     UNKNOWN,
     READ,
     CREATE,
     DELETE,
     OPEN,
-    WRITE
+    WRITE,
+    GETATTR,
+    READDIR,
 };
 
 /*struct command {
@@ -38,7 +40,7 @@ enum command_type{
  };
 
  struct CREATE_CMD{
-    char *filepath
+    char *filepath;
  };
 
 struct WRITE_CMD{
@@ -48,15 +50,27 @@ struct WRITE_CMD{
     int bytes;
     char *data;
 
-}
+};
  struct DELETE_CMD{
-    char *filepath
+    char *filepath;
  };
 int tokenize_cmd(char* cmd, char *cmd_tok[], int n);
-struct command  parse_cmd(char *input);
+//struct command  parse_cmd(char *input);
+void parser(int new_fd, char * input);
 
-enum command_type get_command(const char *str);
+enum op_type get_command(const char *str);
 
-int execute_file_functions(char *input);
+
+void serv_create(struct CREATE_CMD *create);
+void serv_open(struct OPEN_CMD *open);
+void serv_delete(struct DELETE_CMD *delete);
+void serv_read(struct READ_CMD *read);
+void serv_write(struct WRITE_CMD *write);
+
+//int execute_file_functions(char *input);
+
+static int make_server_path(const char *client_path,
+                            char *server_path,
+                            size_t size);
 
 #endif
